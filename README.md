@@ -70,6 +70,10 @@ weather app — and to actually act on it (rain advice vs. a normal
 update) instead of just dumping raw data into an inbox. n8n made it easy
 to wire together a public API, conditional logic, and two different
 notification channels without writing a backend for it.
+### Gmail Output
+
+![Email Output](docs/email-output.png)
+
 
 ## Tech
 
