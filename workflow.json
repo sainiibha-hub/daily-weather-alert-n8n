@@ -1,0 +1,309 @@
+{
+  "name": "Weather Notification Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "6eca0bcc-4a23-405e-ae0b-5512f9c9e3e0",
+      "name": "Daily Weather Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/weather",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value":  "YOUR_CITY"
+            },
+            {
+              "name": "appid",
+              "value": "YOUR_OPENWEATHER_API_KEY"
+            },
+            {
+              "name": "units",
+              "value": "metric"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3e1d5d4e-7a2d-4f2e-a6de-43418efe95ce",
+      "name": "Fetch Weather Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const weather = $json.weather[0].main;\nconst description = $json.weather[0].description;\nconst temp = $json.main.temp;\nconst humidity = $json.main.humidity;\nconst wind = $json.wind.speed;\n\nlet carry = [];\nlet clothes = \"\";\nlet advice = \"\";\n\n// Temperature-based advice\nif (temp >= 40) {\n  clothes = \"Wear very light cotton clothes.\";\n  carry.push(\"🧴 Sunscreen\", \"💧 Water Bottle\", \"🧢 Cap\");\n  advice = \"Avoid going outside between 12 PM and 4 PM.\";\n} else if (temp >= 35) {\n  clothes = \"Wear light cotton clothes.\";\n  carry.push(\"💧 Water Bottle\", \"🕶 Sunglasses\");\n  advice = \"Stay hydrated throughout the day.\";\n} else if (temp >= 25) {\n  clothes = \"Comfortable casual clothes are fine.\";\n  carry.push(\"💧 Water Bottle\");\n  advice = \"Perfect weather for outdoor activities.\";\n} else if (temp >= 15) {\n  clothes = \"A light jacket is recommended.\";\n  carry.push(\"🧥 Light Jacket\");\n  advice = \"The weather may feel cool in the morning.\";\n} else {\n  clothes = \"Wear warm clothes.\";\n  carry.push(\"🧥 Jacket\", \"🧣 Muffler\");\n  advice = \"Keep yourself warm.\";\n}\n\n// Weather-based advice\nswitch (weather) {\n  case \"Rain\":\n  case \"Drizzle\":\n    carry.push(\"☂ Umbrella\", \"👟 Waterproof Shoes\");\n    advice += \" Rain is expected, so be careful while traveling.\";\n    break;\n\n  case \"Thunderstorm\":\n    carry.push(\"☂ Umbrella\");\n    advice += \" Thunderstorms are expected. Avoid open areas.\";\n    break;\n\n  case \"Clear\":\n    carry.push(\"😎 Sunglasses\");\n    break;\n\n  case \"Clouds\":\n    advice += \" It will remain cloudy for most of the day.\";\n    break;\n\n  case \"Mist\":\n  case \"Fog\":\n    advice += \" Drive carefully due to low visibility.\";\n    break;\n}\n\n// Remove duplicate items\ncarry = [...new Set(carry)];\n\nconst today = new Date().toLocaleDateString(\"en-IN\", {\n  weekday: \"long\",\n  day: \"numeric\",\n  month: \"long\",\n  year: \"numeric\",\n});\n\nconst message = `🌤 Good Morning!\n\n📅 ${today}\n\n📍 Today's Weather Report\n\n🌡 Temperature: ${temp}°C\n☁ Condition: ${description}\n💧 Humidity: ${humidity}%\n💨 Wind Speed: ${wind} m/s\n\n👕 Clothing:\n${clothes}\n\n🎒 Carry:\n${carry.join(\", \")}\n\n💡 Advice:\n${advice}\n\nHave a productive day! 😊`;\n\nreturn [\n  {\n    json: {\n      weather,\n      description,\n      temp,\n      humidity,\n      wind,\n      clothes,\n      carry,\n      advice,\n      message,\n    },\n  },\n];"
+      },
+      "id": "bda92a59-058c-400d-b324-86240b57a3bd",
+      "name": "Prepare Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.weather === 'Rain' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "id": "ec87c210-41f8-4e3c-bdd5-578f42acb099"
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "10e7e479-88c8-4aff-8860-7878ad003613",
+      "name": "Rain Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        304
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "subject",
+              "value": "=🌧️ Rain Alert - Ambala",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "message",
+              "value": "=🌧️ Rain Alert!\n\n📅 {{ new Date().toLocaleDateString('en-IN') }}\n\n🌡️ Temperature: {{ $json.temp }}°C\n☁️ Weather: {{ $json.description }}\n💧 Humidity: {{ $json.humidity }}%\n💨 Wind Speed: {{ $json.wind }} m/s\n\n☂️ Carry an umbrella.\n👟 Wear waterproof footwear.\n\nStay safe and stay dry!",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f3dabd3c-cd44-4465-8531-7752c6bffb01",
+      "name": "Rain Advice",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1136,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "={{$json.weather === 'Rain' ? '🌧️ Rain Alert - Ambala' : '☀️ Daily Weather Report - Ambala'}}",
+        "emailType": "text",
+        "message": "={{ $json.message }}",
+        "options": {}
+      },
+      "id": "8a49acbe-57d9-43a7-b7ba-5c38188cc574",
+      "name": "Send Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        304
+      ],
+      "webhookId": "REDACTED",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "subject",
+              "value": "=☀️ Daily Weather Report - Ambala",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3c9c3a39-2eb0-4296-9763-6127a72a388d",
+      "name": "Normal Advice",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1136,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHAT_ID",
+        "text": "=Hello from n8n 🚀",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        304
+      ],
+      "id": "3b7f74b6-f24e-46ae-8167-f2e33dc83ee6",
+      "name": "Send a text message",
+      "webhookId": "REDACTED",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Weather Check": {
+      "main": [
+        [
+          {
+            "node": "Fetch Weather Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Weather Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Message": {
+      "main": [
+        [
+          {
+            "node": "Rain Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rain Check": {
+      "main": [
+        [
+          {
+            "node": "Rain Advice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normal Advice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rain Advice": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Gmail": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normal Advice": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f0dab31a-b312-4a6f-9bdf-8f0d9da3121d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3dc7f0b9bed2d5f784879bae56395276f4d2af7db156e2206789637cae09ba13"
+  },
+  "nodeGroups": [],
+  "id": "lq48fPYaAR8ZQHPG",
+  "tags": []
+}

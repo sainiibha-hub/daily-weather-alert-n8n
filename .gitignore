@@ -1,0 +1,7 @@
+# Safety net in case any credential/export file slips in with real secrets
+.env
+*.env
+credentials.json
+*credentials*.json
+.DS_Store
+Thumbs.db
